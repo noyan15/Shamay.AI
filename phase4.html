@@ -1,0 +1,165 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=210mm, height=297mm, initial-scale=1.0">
+  <title>Comparison Data and Manual Inputs</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      margin: 25mm 20mm;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    .container {
+      max-width: 160mm;
+      margin: 0 auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .progress-bar {
+      width: 100%;
+      background-color: #ddd;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .progress {
+      width: 66.67%;
+      height: 10px;
+      background-color: #4CAF50;
+      border-radius: 5px;
+      transition: width 0.4s ease;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12pt;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .confirmation {
+      color: #2e7d32;
+      font-style: italic;
+      margin-top: 10px;
+    }
+    .nav {
+      margin-top: 20px;
+    }
+    .nav a {
+      margin-right: 10px;
+      color: #4CAF50;
+      text-decoration: none;
+    }
+    .nav a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Comparison Data and Manual Inputs</h1>
+    <div class="progress-bar">
+      <div class="progress"></div>
+    </div>
+    <form id="comparisonForm" onsubmit="handleSubmit(event)">
+      <div class="form-group">
+        <label for="comparison">Comparison Data (CSV or Manual):</label>
+        <input type="file" id="comparison" name="comparison" accept=".csv" >
+      </div>
+      <div class="form-group">
+        <label for="considerations">Manual Considerations:</label>
+        <textarea id="considerations" name="considerations" >Metro line nearby, shared ownership restrictions</textarea>
+      </div>
+      <div class="form-group">
+        <label for="builtArea">Built Area (sqm):</label>
+        <input type="number" id="builtArea" name="builtArea" value="120" >
+      </div>
+      <div class="form-group">
+        <label for="balconyArea">Balcony Area (sqm):</label>
+        <input type="number" id="balconyArea" name="balconyArea" value="10" >
+      </div>
+      <button type="submit">Continue</button>
+    </form>
+    <div id="confirmation" class="confirmation" style="display: none;">Comparison data and inputs processed successfully! Proceeding to Phase 5.</div>
+    <div class="nav">
+      <a href="phase1.html">Phase 1</a>
+      <a href="phase2.html">Phase 2</a>
+      <a href="phase3.html">Phase 3</a>
+      <a href="phase4.html">Phase 4</a>
+      <a href="phase5.html">Phase 5</a>
+      <a href="phase6.html">Phase 6</a>
+    </div>
+    <script>
+      function handleSubmit(event) {
+        event.preventDefault();
+        document.getElementById('comparisonForm').style.display = 'none';
+        document.getElementById('confirmation').style.display = 'block';
+        setTimeout(() => window.location.href = 'phase5.html', 2000);
+      }
+    </script>
+  </div>
+</body>
+</html>
