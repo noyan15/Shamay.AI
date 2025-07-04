@@ -1,157 +1,368 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=210mm, height=297mm, initial-scale=1.0">
   <title>Document and Image Upload</title>
   <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --accent-color: #2980b9;
+      --success-color: #27ae60;
+      --light-gray: #ecf0f1;
+      --medium-gray: #bdc3c7;
+      --dark-gray: #7f8c8d;
+      --white: #ffffff;
+      --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --border-radius: 8px;
+    }
+    
     body {
-      font-family: 'Arial', sans-serif;
-      font-size: 12pt;
-      line-height: 1.5;
-      margin: 25mm 20mm;
-      background-color: #f9f9f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 13pt;
+      line-height: 1.6;
+      margin: 20mm 15mm;
+      background-color: #f5f7fa;
       color: #333;
     }
+    
     .container {
-      max-width: 160mm;
+      max-width: 170mm;
       margin: 0 auto;
-      padding: 20px;
-      background: #fff;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: calc(297mm - 40mm);
     }
-    .progress-bar {
-      width: 100%;
-      background-color: #ddd;
-      border-radius: 5px;
+    
+    h1 {
+      color: var(--primary-color);
+      font-size: 1.5em;
+      margin-bottom: 1em;
+      padding-bottom: 0.5em;
+      border-bottom: 1px solid var(--medium-gray);
+    }
+    
+    .split-screen {
+      flex: 1;
+      display: flex;
+      gap: 15px;
       margin-bottom: 20px;
     }
+    
+    .pdf-view, .form-section {
+      flex: 1;
+      background: var(--white);
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .pdf-view {
+      padding: 15px;
+    }
+    
+    .form-section {
+      padding: 20px;
+    }
+    
+    .progress-container {
+      margin-bottom: 25px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: var(--light-gray);
+      border-radius: 4px;
+      margin-bottom: 5px;
+      overflow: hidden;
+    }
+    
     .progress {
+      height: 100%;
+      background-color: var(--success-color);
       width: 33.33%;
-      height: 10px;
-      background-color: #4CAF50;
-      border-radius: 5px;
       transition: width 0.4s ease;
     }
-    .form-group {
-      margin-bottom: 15px;
+    
+    .progress-text {
+      font-size: 0.85em;
+      color: var(--dark-gray);
+      text-align: right;
     }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
     label {
       display: block;
-      font-weight: bold;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--primary-color);
+    }
+    
+    input[type="file"], input[type="text"], textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--medium-gray);
+      border-radius: var(--border-radius);
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 0.95em;
+      transition: border-color 0.3s;
+    }
+    
+    input[type="file"] {
+      padding: 8px 10px;
+    }
+    
+    input[type="file"]:focus, 
+    input[type="text"]:focus, 
+    textarea:focus {
+      outline: none;
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+    
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    
+    button {
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: 600;
+      transition: background-color 0.3s, transform 0.2s;
+      width: 100%;
+    }
+    
+    button:hover {
+      background-color: var(--accent-color);
+    }
+    
+    button:active {
+      transform: translateY(1px);
+    }
+    
+    .confirmation {
+      color: var(--success-color);
+      font-weight: 500;
+      margin-top: 15px;
+      padding: 12px;
+      background-color: rgba(39, 174, 96, 0.1);
+      border-radius: var(--border-radius);
+      text-align: center;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    
+    .nav {
+      margin-top: 25px;
+      text-align: center;
+      padding-top: 15px;
+      border-top: 1px solid var(--medium-gray);
+    }
+    
+    .nav a {
+      margin: 0 12px;
+      color: var(--secondary-color);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95em;
+      transition: color 0.3s;
+    }
+    
+    .nav a:hover {
+      color: var(--accent-color);
+      text-decoration: underline;
+    }
+    
+    object {
+      width: 100%;
+      flex: 1;
+      min-height: 300px;
+      border: 1px solid var(--medium-gray);
+      border-radius: 4px;
+    }
+    
+    #comparisonContainer {
+      display: none;
+    }
+    
+    #uploadFormContainer {
+      display: block;
+      background: var(--white);
+      padding: 25px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+    }
+    
+    .file-input-container {
+      position: relative;
       margin-bottom: 5px;
     }
-    input[type="file"] {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
+    
+    .file-input-label {
+      display: block;
+      padding: 10px 12px;
+      border: 1px dashed var(--medium-gray);
+      border-radius: var(--border-radius);
+      text-align: center;
       cursor: pointer;
-      font-size: 12pt;
+      transition: all 0.3s;
     }
-    button:hover {
-      background-color: #45a049;
+    
+    .file-input-label:hover {
+      border-color: var(--secondary-color);
+      background-color: rgba(52, 152, 219, 0.05);
     }
-    .confirmation {
-      color: #2e7d32;
-      font-style: italic;
-      margin-top: 10px;
+    
+    input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
     }
-    .nav {
-      margin-top: 20px;
+    
+    .file-info {
+      font-size: 0.85em;
+      color: var(--dark-gray);
+      margin-top: 5px;
+      margin-left: 5px;
     }
-    .nav a {
-      margin-right: 10px;
-      color: #4CAF50;
-      text-decoration: none;
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    .nav a:hover {
-      text-decoration: underline;
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .split-screen {
+        flex-direction: column;
+      }
+      
+      .container {
+        margin: 10mm;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Document and Image Upload</h1>
-    <div class="progress-bar">
-      <div class="progress"></div>
+    <div class="split-screen" id="comparisonContainer">
+      <div class="pdf-view">
+        <h1>Uploaded Document</h1>
+        <object id="uploadedDoc" data="" type="application/pdf">
+          <p>PDF preview not supported. <a id="downloadLink" href="#">Download</a>.</p>
+        </object>
+      </div>
+      <div class="form-section">
+        <h1>Extracted and Editable Data</h1>
+        <div class="progress-container">
+          <div class="progress-bar"><div class="progress"></div></div>
+          <div class="progress-text">Phase 2 of 6 - Data Verification</div>
+        </div>
+        <form id="extractedForm">
+          <div class="form-group">
+            <label for="tabuData">Tabu Extract Data:</label>
+            <textarea id="tabuData" name="tabuData" placeholder="AI Extracted: Owner, Property ID, Area"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="permitsData">Building Permits Data:</label>
+            <textarea id="permitsData" name="permitsData" placeholder="AI Extracted: Permit #, Date, Status"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="planningData">Planning Information Data:</label>
+            <textarea id="planningData" name="planningData" placeholder="AI Extracted: Land Use, Floor Limit"></textarea>
+          </div>
+          <button type="button" onclick="saveChanges()">Save Changes and Proceed</button>
+        </form>
+        <div id="confirmation" class="confirmation" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: middle; margin-right: 5px;">
+            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+          </svg>
+          Data saved successfully! Proceeding to Phase 3.
+        </div>
+      </div>
     </div>
-    <form id="uploadForm" onsubmit="handleSubmit(event)">
-      <div class="form-group">
-        <label for="tabu">Tabu Extract (PDF):</label>
-        <input type="file" id="tabu" name="tabu" accept=".pdf" >
+    <div id="uploadFormContainer">
+      <h1>Document and Image Upload</h1>
+      <div class="progress-container">
+        <div class="progress-bar"><div class="progress"></div></div>
+        <div class="progress-text">Phase 2 of 6 - Document Upload</div>
       </div>
-      <div class="form-group">
-        <label for="condo">Condominium Order (PDF, Optional):</label>
-        <input type="file" id="condo" name="condo" accept=".pdf">
-      </div>
-      <div class="form-group">
-        <label for="permits">Building Permits (PDF):</label>
-        <input type="file" id="permits" name="permits" accept=".pdf" multiple >
-      </div>
-      <div class="form-group">
-        <label for="planning">Planning Information (Excel/PDF):</label>
-        <input type="file" id="planning" name="planning" accept=".xlsx,.pdf" >
-      </div>
-      <div class="form-group">
-        <label for="facade">Facade Image (JPG/PNG, Optional):</label>
-        <input type="file" id="facade" name="facade" accept=".jpg,.png">
-      </div>
-      <div class="form-group">
-        <label for="interior">Interior Images (Min 4, JPG/PNG):</label>
-        <input type="file" id="interior" name="interior" accept=".jpg,.png" multiple >
-      </div>
-      <button type="submit">Continue</button>
-    </form>
-    <div id="confirmation" class="confirmation" style="display: none;">Documents and images processed successfully! Proceeding to Phase 3.</div>
+      <form id="uploadForm" onsubmit="handleUpload(event)">
+        <div class="form-group">
+          <label for="tabu">Tabu Extract (PDF):</label>
+          <div class="file-input-container">
+            <label class="file-input-label" for="tabu">Choose PDF file</label>
+            <input type="file" id="tabu" name="tabu" accept=".pdf" required>
+          </div>
+          <div class="file-info">Required document proving property ownership</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="condo">Condominium Order (PDF, Optional):</label>
+          <div class="file-input-container">
+            <label class="file-input-label" for="condo">Choose PDF file</label>
+            <input type="file" id="condo" name="condo" accept=".pdf">
+          </div>
+          <div class="file-info">Required for condominium properties only</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="permits">Building Permits (PDF):</label>
+          <div class="file-input-container">
+            <label class="file-input-label" for="permits">Choose one or more PDF files</label>
+            <input type="file" id="permits" name="permits" accept=".pdf" multiple required>
+          </div>
+          <div class="file-info">All relevant building permits for the property</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="planning">Planning Information (Excel/PDF):</label>
+          <div class="file-input-container">
+            <label class="file-input-label" for="planning">Choose Excel or PDF file</label>
+            <input type="file" id="planning" name="planning" accept=".xlsx,.pdf" required>
+          </div>
+          <div class="file-info">Zoning and planning documents</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="facade">Facade Image (JPG/PNG, Optional):</label>
+          <div class="file-input-container">
+            <label class="file-input-label" for="facade">Choose image file</label>
+            <input type="file" id="facade" name="facade" accept=".jpg,.png">
+          </div>
+          <div class="file-info">Clear front view of the property</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="interior">Interior Images (Min 4, JPG/PNG):</label>
+          <div class="file-input-container">
+            <label class="file-input-label" for="interior">Choose multiple image files</label>
+            <input type="file" id="interior" name="interior" accept=".jpg,.png" multiple required>
+          </div>
+          <div class="file-info">At least 4 photos showing different interior spaces</div>
+        </div>
+        
+        <button type="submit">Upload and Extract</button>
+      </form>
+    </div>
     <div class="nav">
       <a href="phase1.html">Phase 1</a>
       <a href="phase2.html">Phase 2</a>
@@ -160,14 +371,107 @@
       <a href="phase5.html">Phase 5</a>
       <a href="phase6.html">Phase 6</a>
     </div>
-    <script>
-      function handleSubmit(event) {
-        event.preventDefault();
-        document.getElementById('uploadForm').style.display = 'none';
-        document.getElementById('confirmation').style.display = 'block';
-        setTimeout(() => window.location.href = 'phase3.html', 500);
-      }
-    </script>
   </div>
+  <script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+          var firstSheetName = workbook.SheetNames[0];
+          var worksheet = workbook.Sheets[firstSheetName];
+          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+          var filteredData = jsonData.filter(row => row.some(filledCell));
+          var headerRowIndex = filteredData.findIndex((row, index) =>
+            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+          );
+          if (headerRowIndex === -1 || headerRowIndex > 25) {
+            headerRowIndex = 0;
+          }
+          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+          return csv;
+        } catch (e) {
+          console.error(e);
+          return "";
+        }
+      }
+      return gk_fileData[filename] || "";
+    }
+
+    function handleUpload(event) {
+      event.preventDefault();
+      console.log("Upload function triggered");
+      const tabuFile = document.getElementById('tabu').files[0];
+      
+      if (tabuFile) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          console.log("File loaded successfully");
+          document.getElementById('uploadedDoc').data = e.target.result;
+          document.getElementById('comparisonContainer').style.display = 'flex';
+          document.getElementById('uploadFormContainer').style.display = 'none';
+          
+          // Update progress bar
+          document.querySelectorAll('.progress').forEach(progress => {
+            progress.style.width = '66.66%';
+          });
+          document.querySelectorAll('.progress-text').forEach(text => {
+            text.textContent = 'Phase 2 of 6 - Data Verification';
+          });
+          
+          // Simulate AI extraction
+          setTimeout(() => {
+            console.log("Simulating AI extraction");
+            document.getElementById('tabuData').value = "Owner: Joseph Cohen\nProperty ID: 12345\nArea: 120 sqm\nAddress: 123 Main St, Anytown\nRegistration Date: 15.03.2018";
+            document.getElementById('permitsData').value = "Permit #: 456789\nDate: 01.01.2023\nStatus: Approved\nType: Renovation\nIssued By: City Building Dept.";
+            document.getElementById('planningData').value = "Land Use: Residential\nFloor Limit: 5\nZoning: R2\nBuilding Height: 15m\nParking Spaces Required: 2";
+          }, 1500);
+        };
+        reader.readAsDataURL(tabuFile);
+      } else {
+        alert("Please upload a Tabu Extract PDF to proceed.");
+      }
+    }
+
+    function saveChanges() {
+      document.getElementById('extractedForm').style.display = 'none';
+      const confirmation = document.getElementById('confirmation');
+      confirmation.style.display = 'block';
+      
+      setTimeout(() => {
+        confirmation.innerHTML += '<div style="margin-top: 10px;"><small>Redirecting to next phase...</small></div>';
+      }, 1000);
+      
+      setTimeout(() => window.location.href = 'phase3.html', 2500);
+    }
+
+    // Enhance file input display
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+      input.addEventListener('change', function() {
+        const label = this.previousElementSibling;
+        if (this.files.length > 0) {
+          if (this.multiple) {
+            label.textContent = `${this.files.length} files selected`;
+          } else {
+            label.textContent = this.files[0].name;
+          }
+          label.style.borderColor = '#27ae60';
+          label.style.backgroundColor = 'rgba(39, 174, 96, 0.1)';
+        } else {
+          label.textContent = label.getAttribute('data-default') || 'Choose file';
+          label.style.borderColor = '';
+          label.style.backgroundColor = '';
+        }
+      });
+    });
+  </script>
 </body>
 </html>
